@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <complex.h>
 #include <math.h>
 #include "fractal.h"
-#include "complex/complex.h"
-#include "../display/display.h"
+
+typedef double complex Cplx ;
 
 typedef struct Fractal_s {
     int width;
@@ -64,48 +65,6 @@ __u_char* Fractal_get_pixel_data(Fractal* f) {
 
 }
 
-void Fractal_save_image_png(Fractal* f, char* filename) {
-
-    __u_char* image_rgb = Fractal_get_pixel_data(f);
-    
-    Display_save_image_png(image_rgb, f->width, f->height, filename);
-
-    free(image_rgb);
-
-}
-
-void Fractal_save_image_raw(Fractal* f, char* filename) {
-    
-    FILE* file = fopen(filename, "wb");
-    if (!file) {
-        fprintf(stderr, "fopen Error: Could not open file %s\n", filename);
-        exit(EXIT_FAILURE);
-    }
-
-    fwrite(&f->width, sizeof(int), 1, file);
-    fwrite(&f->height, sizeof(int), 1, file);
-
-    fwrite(f->pixel_data, sizeof(int), f->width * f->height * 3, file);
-    fclose(file);
-
-}
-
-void Fractal_display_image(Fractal* f) {
-
-    __u_char* image_rgb = malloc(f->width * f->height * 3 * sizeof(__u_char));
-    for (int i = 0; i < f->width * f->height; i++) {
-        __u_char color = 255 - (f->pixel_data[i] * 255 / f->max_iter);
-        image_rgb[3 * i + 0] = color;
-        image_rgb[3 * i + 1] = color;
-        image_rgb[3 * i + 2] = color;
-    }
-
-    Display_display_image(image_rgb, f->width, f->height);
-
-    free(image_rgb);
-
-}
-
 Cplx pixel_to_complex(Fractal* f, int px, int py) {
 
     // Normalize pixel coordinates to [-1, 1] range
@@ -123,7 +82,7 @@ Cplx pixel_to_complex(Fractal* f, int px, int py) {
     double rotated_y = scaled_x * sin_angle + scaled_y * cos_angle;
 
     // Translate to the center of the complex plane
-    Cplx c = Cplx_create(f->centerX + rotated_x, f->centerY + rotated_y);
+    Cplx c = f->centerX + rotated_x + (f->centerY + rotated_y) * _Complex_I;
 
     return c;
 
@@ -131,12 +90,11 @@ Cplx pixel_to_complex(Fractal* f, int px, int py) {
 
 int compute_mandelbrot(Fractal* f, Cplx c) {
 
-    Cplx zn = Cplx_copy(c);
-    double bound2 = f->bound * f->bound;
+    Cplx zn = c;
 
     int i = 0;
-    while (i < f->max_iter && Cplx_mod2(zn) < bound2) {
-        zn = Cplx_add(Cplx_mul(zn, zn), c);
+    while (i < f->max_iter && cabs(zn) < f->bound) {
+        zn = zn * zn + c;
         i++;
     }
 
@@ -156,4 +114,9 @@ void Fractal_generate_mandelbrot(Fractal* f) {
         }
     }
 
+}
+
+void Fractal_destroy(Fractal* f) {
+    free(f->pixel_data);
+    free(f);
 }
