@@ -16,19 +16,18 @@ int main() {
     colors[3] = (Color) {24, 24, 24};
 
     float* marks = malloc(2 * sizeof(float));
-    marks[0] = 0.25f;
-    marks[1] = 0.5f;
-
+    marks[0] = 0.3f;
+    marks[1] = 0.9f;
     
     Fractal* f = Fractal_create(width, height, 3);
     Fractal_set_max_iter(f, 100);
     Fractal_set_gradient(f, Gradient_create(colors, marks, 4));
-    // Fractal_generate_julia(f, -0.4, 0.6);
-    Fractal_set_center(f, -0.6, 0);
-    Fractal_generate_mandelbrot(f);
+    Fractal_generate_julia(f, -0.8, 0.156);
+    // Fractal_set_center(f, -0.6, 0);
+    // Fractal_generate_mandelbrot(f);
 
     __u_char* image_rgb = Fractal_get_pixel_data(f);
-    Display_save_image_png(image_rgb, width, height, "image/mandelbrot.png");
+    Display_save_image_png(image_rgb, width, height, "image/julia.png");
     free(image_rgb);
 
     Fractal_destroy(f);

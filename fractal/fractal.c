@@ -17,7 +17,9 @@ typedef struct Fractal_s {
     int max_iter;
     double bound;
     Gradient* gradient;
-    int* pixel_data;
+    float max_data;
+    float min_data;
+    float* pixel_data;
 } Fractal;
 
 Fractal* Fractal_create(int width, int height, double canvasW) {
@@ -32,6 +34,8 @@ Fractal* Fractal_create(int width, int height, double canvasW) {
     f->max_iter = 100;
     f->bound = 2;
     f->gradient = Gradient_create_default();
+    f->max_data = __FLT32_MIN__;
+    f->min_data = __FLT32_MAX__;
     f->pixel_data = malloc(f->width * f->height * sizeof(int));
     return f;
 }
@@ -61,7 +65,7 @@ __u_char* Fractal_get_pixel_data(Fractal* f) {
     
     __u_char* image_rgb = malloc(f->width * f->height * 3 * sizeof(__u_char));
     for (int i = 0; i < f->width * f->height; i++) {
-        float t = (float) f->pixel_data[i] / f->max_iter;
+        float t = (f->pixel_data[i] - f->min_data) / (f->max_data - f->min_data);
         Color c = Gradient_get_color(f->gradient, t);
         image_rgb[3 * i + 0] = c.r;
         image_rgb[3 * i + 1] = c.g;
@@ -95,6 +99,10 @@ Cplx pixel_to_complex(Fractal* f, int px, int py) {
 
 }
 
+float smooth_iteration(int n, Cplx z) {
+    return ((float) (n + 1) - log(log(cabs(z))) / log(2));
+}
+
 void Fractal_generate_mandelbrot(Fractal* f) {
 
     for (int py = 0; py < f->height; py++) {
@@ -109,7 +117,14 @@ void Fractal_generate_mandelbrot(Fractal* f) {
                 n++;
             }
 
-            f->pixel_data[py * f->width + px] = n;
+            f->pixel_data[py * f->width + px] = smooth_iteration(n, z);
+
+            if (f->pixel_data[py * f->width + px] < f->min_data) {
+                f->min_data = f->pixel_data[py * f->width + px];
+            }
+            if (f->pixel_data[py * f->width + px] > f->max_data) {
+                f->max_data = f->pixel_data[py * f->width + px];
+            }
 
         }
     }
@@ -131,8 +146,15 @@ void Fractal_generate_julia(Fractal* f, double cRe, double cIm) {
                 n++;
             }
 
-            f->pixel_data[py * f->width + px] = n;
+            f->pixel_data[py * f->width + px] = smooth_iteration(n, z);
 
+            if (f->pixel_data[py * f->width + px] < f->min_data) {
+                f->min_data = f->pixel_data[py * f->width + px];
+            }
+            if (f->pixel_data[py * f->width + px] > f->max_data) {
+                f->max_data = f->pixel_data[py * f->width + px];
+            }
+            
         }
     }
 
