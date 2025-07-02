@@ -16,6 +16,7 @@ typedef struct Fractal_s {
     double rot;
     int max_iter;
     double bound;
+    Gradient* gradient;
     int* pixel_data;
 } Fractal;
 
@@ -30,6 +31,7 @@ Fractal* Fractal_create(int width, int height, double canvasW) {
     f->rot = 0;
     f->max_iter = 100;
     f->bound = 2;
+    f->gradient = Gradient_create_default();
     f->pixel_data = malloc(f->width * f->height * sizeof(int));
     return f;
 }
@@ -51,14 +53,19 @@ void Fractal_set_bound(Fractal* f, double bound) {
     f->bound = bound;
 }
 
+void Fractal_set_gradient(Fractal* f, Gradient* gradient) {
+    f->gradient = gradient;
+}
+
 __u_char* Fractal_get_pixel_data(Fractal* f) {
     
     __u_char* image_rgb = malloc(f->width * f->height * 3 * sizeof(__u_char));
     for (int i = 0; i < f->width * f->height; i++) {
-        __u_char color = 255 - (f->pixel_data[i] * 255 / f->max_iter);
-        image_rgb[3 * i + 0] = color;
-        image_rgb[3 * i + 1] = color;
-        image_rgb[3 * i + 2] = color;
+        float t = (float) f->pixel_data[i] / f->max_iter;
+        Color c = Gradient_get_color(f->gradient, t);
+        image_rgb[3 * i + 0] = c.r;
+        image_rgb[3 * i + 1] = c.g;
+        image_rgb[3 * i + 2] = c.b;
     }
 
     return image_rgb;
@@ -88,27 +95,42 @@ Cplx pixel_to_complex(Fractal* f, int px, int py) {
 
 }
 
-int compute_mandelbrot(Fractal* f, Cplx c) {
-
-    Cplx zn = c;
-
-    int i = 0;
-    while (i < f->max_iter && cabs(zn) < f->bound) {
-        zn = zn * zn + c;
-        i++;
-    }
-
-    return i;
-
-}
-
 void Fractal_generate_mandelbrot(Fractal* f) {
 
     for (int py = 0; py < f->height; py++) {
         for (int px = 0; px < f->width; px++) {
 
             Cplx c = pixel_to_complex(f, px, py);
-            int n = compute_mandelbrot(f, c);
+            Cplx z = 0;
+            int n = 0;
+
+            while (n < f->max_iter && cabs(z) < f->bound) {
+                z = z * z + c;
+                n++;
+            }
+
+            f->pixel_data[py * f->width + px] = n;
+
+        }
+    }
+
+}
+
+void Fractal_generate_julia(Fractal* f, double cRe, double cIm) {
+
+    Cplx c = cRe + cIm * _Complex_I;
+
+    for (int py = 0; py < f->height; py++) {
+        for (int px = 0; px < f->width; px++) {
+
+            Cplx z = pixel_to_complex(f, px, py);
+            int n = 0;
+
+            while (n < f->max_iter && cabs(z) < f->bound) {
+                z = z * z + c;
+                n++;
+            }
+
             f->pixel_data[py * f->width + px] = n;
 
         }
@@ -117,6 +139,7 @@ void Fractal_generate_mandelbrot(Fractal* f) {
 }
 
 void Fractal_destroy(Fractal* f) {
+    Gradient_destroy(f->gradient);
     free(f->pixel_data);
     free(f);
 }
